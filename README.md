@@ -33,13 +33,13 @@
 ## 仓库结构
 
 - `plugins/wordpress-epusdt/`：插件源码目录
-- `releases/wordpress-epusdt-plugin-v1.0.2.zip`：可直接上传安装的发布包
+- `releases/wordpress-epusdt-plugin-v1.0.3.zip`：可直接上传安装的发布包
 - `assets/icon/`：README 展示资源
 
 ## 安装
 
 1. 先在 WordPress 安装并启用 WooCommerce。
-2. 上传 `releases/wordpress-epusdt-plugin-v1.0.2.zip` 到 WordPress 插件安装页，或把 `plugins/wordpress-epusdt/` 整个目录放入 `wp-content/plugins/`。
+2. 上传 `releases/wordpress-epusdt-plugin-v1.0.3.zip` 到 WordPress 插件安装页，或把 `plugins/wordpress-epusdt/` 整个目录放入 `wp-content/plugins/`。
 3. 启用 `EPusdt` 插件。
 4. 进入 `WooCommerce > 设置 > 支付 > EPusdt`。
 5. 配置：
@@ -74,4 +74,4 @@
 
 ## 发布包
 
-- [点击查看仓库中的发布包](releases/wordpress-epusdt-plugin-v1.0.2.zip)
+- [点击查看仓库中的发布包](releases/wordpress-epusdt-plugin-v1.0.3.zip)
