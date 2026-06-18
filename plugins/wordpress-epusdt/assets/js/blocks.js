@@ -1,5 +1,8 @@
 (function () {
-	var settings = window.wc && window.wc.wcSettings ? window.wc.wcSettings.getSetting('wordpress_epusdt_data', {}) : {};
+	var wcSettings = window.wc && window.wc.wcSettings;
+	var settings = wcSettings && wcSettings.getPaymentMethodData
+		? wcSettings.getPaymentMethodData('wordpress_epusdt', {})
+		: (wcSettings ? wcSettings.getSetting('wordpress_epusdt_data', {}) : {});
 	var registry = window.wc && window.wc.wcBlocksRegistry;
 	var element = window.wp && window.wp.element;
 	var htmlEntities = window.wp && window.wp.htmlEntities;

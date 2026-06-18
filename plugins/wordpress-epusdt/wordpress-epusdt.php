@@ -3,7 +3,7 @@
  * Plugin Name: EPusdt
  * Plugin URI: https://github.com/Yufeifeio/wordpress-epusdt
  * Description: 基于 EPay 兼容接口的 EPusdt WooCommerce 支付插件。
- * Version: 1.0.2
+ * Version: 1.0.3
  * Author: Yufeifeio
  * Author URI: https://github.com/Yufeifeio
  * Requires at least: 6.0
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-define('WORDPRESS_EPUSDT_VERSION', '1.0.2');
+define('WORDPRESS_EPUSDT_VERSION', '1.0.3');
 define('WORDPRESS_EPUSDT_FILE', __FILE__);
 define('WORDPRESS_EPUSDT_PATH', plugin_dir_path(__FILE__));
 define('WORDPRESS_EPUSDT_URL', plugin_dir_url(__FILE__));
@@ -39,7 +39,11 @@ function wordpress_epusdt_plugins_loaded() {
 	add_action('woocommerce_api_wordpress_epusdt_notify', 'wordpress_epusdt_handle_notify');
 	add_action('woocommerce_before_thankyou', 'wordpress_epusdt_handle_return_fallback', 5);
 	add_action('before_woocommerce_init', 'wordpress_epusdt_declare_hpos_compatibility');
-	add_action('woocommerce_blocks_loaded', 'wordpress_epusdt_register_blocks_support');
+	if (did_action('woocommerce_blocks_loaded')) {
+		wordpress_epusdt_register_blocks_support();
+	} else {
+		add_action('woocommerce_blocks_loaded', 'wordpress_epusdt_register_blocks_support');
+	}
 }
 add_action('plugins_loaded', 'wordpress_epusdt_plugins_loaded', 20);
 
