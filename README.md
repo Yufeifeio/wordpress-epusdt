@@ -5,12 +5,12 @@
 <div align="center">
   <img src="https://img.shields.io/badge/WordPress-WooCommerce%20%E6%8F%92%E4%BB%B6-203A43?style=for-the-badge" alt="WordPress WooCommerce 插件" />
   <img src="https://img.shields.io/badge/EPusdt-Callback%20Ready-26A17B?style=for-the-badge&logo=tether&logoColor=white" alt="EPusdt Callback Ready" />
-  <img src="https://img.shields.io/badge/EPay-%E5%85%BC%E5%AE%B9%E6%8E%A5%E5%8F%A3-0F2027?style=for-the-badge" alt="EPay 兼容接口" />
+  <img src="https://img.shields.io/badge/GMPay-Official%20API-0F2027?style=for-the-badge" alt="GMPay Official API" />
 </div>
 
 # wordpress-epusdt
 
-![](assets/icon/telegram.svg) 鱼肥肥 [@pyufc](https://t.me/pyufc) 这是一个面向 WordPress / WooCommerce 的 EPusdt 支付插件，使用 EPusdt 的 EPay 兼容接口完成下单、跳转和回调。
+![](assets/icon/telegram.svg) 鱼肥肥 [@pyufc](https://t.me/pyufc) 这是一个面向 WordPress / WooCommerce 的 EPusdt 支付插件，使用 GMPay 官方 EPusdt 接口完成下单、跳转和回调。
 
 <p align="center">
   <img src="assets/icon/usdt.ico" width="84" alt="USDT Icon" />
@@ -22,10 +22,8 @@
 
 ## 功能
 
-- 对接 EPusdt 的 EPay 兼容下单接口
-- 支持 API 内网地址 + 公网收银台地址分离部署
+- 对接 EPusdt 的 GMPay 官方下单接口
 - 支持异步回调验签
-- 支持同步返回兜底补单
 - 支持 WooCommerce 经典结账页
 - 支持 WooCommerce Blocks 结账页
 - 支持 WooCommerce HPOS
@@ -33,20 +31,19 @@
 ## 仓库结构
 
 - `plugins/wordpress-epusdt/`：插件源码目录
-- `releases/wordpress-epusdt-plugin-v1.0.3.zip`：可直接上传安装的发布包
+- `releases/wordpress-epusdt-plugin-v1.0.4.zip`：可直接上传安装的发布包
 - `assets/icon/`：README 展示资源
 
 ## 安装
 
 1. 先在 WordPress 安装并启用 WooCommerce。
-2. 上传 `releases/wordpress-epusdt-plugin-v1.0.3.zip` 到 WordPress 插件安装页，或把 `plugins/wordpress-epusdt/` 整个目录放入 `wp-content/plugins/`。
+2. 上传 `releases/wordpress-epusdt-plugin-v1.0.4.zip` 到 WordPress 插件安装页，或把 `plugins/wordpress-epusdt/` 整个目录放入 `wp-content/plugins/`。
 3. 启用 `EPusdt` 插件。
 4. 进入 `WooCommerce > 设置 > 支付 > EPusdt`。
 5. 配置：
-   - `API 地址`：EPusdt 根地址或完整 `submit.php` 接口地址
+   - `API 地址`：EPusdt 根地址或完整 `payments/gmpay/v1/order/create-transaction` 接口地址
    - `PID`：EPusdt API Key 中的 PID
    - `密钥`：对应 PID 的 `secret_key`
-   - `公网收银台地址`：当 API 地址是内网地址时必填
    - 可选 `token`、`network`、`currency`
 6. 保存后启用支付方式。
 
@@ -62,16 +59,17 @@
 ## 回调说明
 
 - 异步通知地址：`/wc-api/wordpress_epusdt_notify/`
-- 回调支持 `GET` 和 `POST`
+- GMPay 主回调为 `POST JSON`
 - 验签通过且金额一致后，WooCommerce 订单会自动更新为已付款状态
 - 异步回调成功返回 `success`
 
-## 兼容说明
+## 接口说明
 
-- 支持将 `API 地址` 填写为站点根地址、`submit.php` 或完整的 EPay 兼容接口地址
-- 插件默认通过 `type=alipay` 调用 EPay 兼容接口，这与当前 EPusdt 上游兼容层保持一致
-- 如果你的 EPusdt 收银台是独立公网域名，请同时填写 `公网收银台地址`
+- 支持将 `API 地址` 填写为站点根地址或完整的 GMPay 官方接口地址
+- 插件默认使用 `POST /payments/gmpay/v1/order/create-transaction`
+- 若同时填写 `token` 与 `network`，会直接创建具体链上订单
+- 若两者留空，将按上游 GMPay 默认行为创建待选择支付网络的订单
 
 ## 发布包
 
-- [点击查看仓库中的发布包](releases/wordpress-epusdt-plugin-v1.0.3.zip)
+- [点击查看仓库中的发布包](releases/wordpress-epusdt-plugin-v1.0.4.zip)

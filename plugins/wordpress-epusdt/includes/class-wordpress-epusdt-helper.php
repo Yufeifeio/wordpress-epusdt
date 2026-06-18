@@ -27,7 +27,6 @@ class WordPress_EPUSDT_Helper {
 				'api_url'             => '',
 				'pid'                 => '',
 				'secret_key'          => '',
-				'public_checkout_url' => '',
 				'token'               => '',
 				'network'             => '',
 				'currency'            => '',
@@ -62,12 +61,12 @@ class WordPress_EPUSDT_Helper {
 		return substr($name, 0, 120);
 	}
 
-	public static function make_sign($params, $secret_key) {
+	public static function make_gmpay_signature($params, $secret_key) {
 		if (!is_array($params)) {
 			$params = array();
 		}
 
-		unset($params['sign'], $params['sign_type']);
+		unset($params['signature']);
 		ksort($params, SORT_STRING);
 
 		$pairs = array();
@@ -86,13 +85,13 @@ class WordPress_EPUSDT_Helper {
 		return strtolower(md5(implode('&', $pairs) . (string) $secret_key));
 	}
 
-	public static function verify_sign($params, $secret_key) {
-		if (empty($params['sign']) || $secret_key === '') {
+	public static function verify_gmpay_signature($params, $secret_key) {
+		if (empty($params['signature']) || $secret_key === '') {
 			return false;
 		}
 
-		$sign = strtolower(trim((string) $params['sign']));
-		$expected = self::make_sign($params, $secret_key);
+		$sign = strtolower(trim((string) $params['signature']));
+		$expected = self::make_gmpay_signature($params, $secret_key);
 
 		if (function_exists('hash_equals')) {
 			return hash_equals($expected, $sign);
@@ -105,11 +104,11 @@ class WordPress_EPUSDT_Helper {
 		$url = trim((string) $url);
 
 		if ($url === '') {
-			throw new Exception('Epusdt API URL is required.');
+			throw new Exception('EPusdt API 地址不能为空。');
 		}
 
 		if (stripos($url, 'http://') !== 0 && stripos($url, 'https://') !== 0) {
-			throw new Exception('Epusdt API URL must start with http:// or https://');
+			throw new Exception('EPusdt API 地址必须以 http:// 或 https:// 开头。');
 		}
 
 		return rtrim($url, '/');
@@ -120,16 +119,10 @@ class WordPress_EPUSDT_Helper {
 		$path = (string) parse_url($url, PHP_URL_PATH);
 		$path = rtrim($path, '/');
 
-		if ($path && preg_match('#/payments/epay/v1/order/create-transaction/submit\.php$#i', $path)) {
-			$submit_url = $url;
-		} elseif ($path && preg_match('#/payments/epay/v1/order/create-transaction$#i', $path)) {
-			$submit_url = $url . '/submit.php';
-		} elseif ($path && preg_match('#/mapi\.php$#i', $path)) {
-			$submit_url = preg_replace('#/mapi\.php$#i', '/submit.php', $url);
-		} elseif ($path && preg_match('#/submit\.php$#i', $path)) {
+		if ($path && preg_match('#/payments/gmpay/v1/order/create-transaction$#i', $path)) {
 			$submit_url = $url;
 		} else {
-			$submit_url = rtrim($url, '/') . '/payments/epay/v1/order/create-transaction/submit.php';
+			$submit_url = rtrim($url, '/') . '/payments/gmpay/v1/order/create-transaction';
 		}
 
 		return array(
@@ -157,10 +150,7 @@ class WordPress_EPUSDT_Helper {
 		}
 
 		$markers = array(
-			'/payments/epay/v1/order/create-transaction/submit.php',
-			'/payments/epay/v1/order/create-transaction',
-			'/mapi.php',
-			'/submit.php',
+			'/payments/gmpay/v1/order/create-transaction',
 		);
 
 		foreach ($markers as $marker) {
@@ -201,6 +191,10 @@ class WordPress_EPUSDT_Helper {
 		$path = trim((string) $path);
 		if ($path === '') {
 			return rtrim($base, '/') . '/';
+		}
+
+		if (stripos($path, 'http://') === 0 || stripos($path, 'https://') === 0) {
+			return $path;
 		}
 
 		if (strpos($path, '//') === 0) {

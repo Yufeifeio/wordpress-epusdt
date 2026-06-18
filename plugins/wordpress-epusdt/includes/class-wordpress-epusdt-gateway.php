@@ -11,7 +11,7 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 		$this->icon               = WORDPRESS_EPUSDT_URL . 'assets/images/usdt.ico';
 		$this->has_fields         = false;
 		$this->method_title       = 'EPusdt';
-		$this->method_description = '通过 EPay 兼容接口接入 EPusdt USDT 支付。';
+		$this->method_description = '通过 GMPay 官方 EPusdt 接口接入 USDT 支付。';
 		$this->supports           = array('products');
 
 		$this->init_form_fields();
@@ -23,7 +23,6 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 		$this->api_url             = $this->get_option('api_url', '');
 		$this->pid                 = $this->get_option('pid', '');
 		$this->secret_key          = $this->get_option('secret_key', '');
-		$this->public_checkout_url = $this->get_option('public_checkout_url', '');
 		$this->token               = $this->get_option('token', '');
 		$this->network             = $this->get_option('network', '');
 		$this->currency            = $this->get_option('currency', 'cny');
@@ -58,7 +57,7 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 			'api_url' => array(
 				'title'       => __('API 地址', 'wordpress-epusdt'),
 				'type'        => 'text',
-				'description' => __('填写 EPusdt 站点地址或完整的 EPay submit.php 接口地址。', 'wordpress-epusdt'),
+				'description' => __('填写 EPusdt 站点地址或完整的 GMPay create-transaction 接口地址。', 'wordpress-epusdt'),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
@@ -73,13 +72,6 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 				'title'       => __('密钥', 'wordpress-epusdt'),
 				'type'        => 'password',
 				'description' => __('与 PID 对应的 secret_key。', 'wordpress-epusdt'),
-				'default'     => '',
-				'desc_tip'    => true,
-			),
-			'public_checkout_url' => array(
-				'title'       => __('公网收银台地址', 'wordpress-epusdt'),
-				'type'        => 'text',
-				'description' => __('当 API 地址是内网地址时必填，例如 https://pay.example.com', 'wordpress-epusdt'),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
@@ -151,9 +143,6 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 		if (!empty($settings['api_url'])) {
 			$settings['api_url'] = trim($settings['api_url']);
 		}
-		if (!empty($settings['public_checkout_url'])) {
-			$settings['public_checkout_url'] = trim($settings['public_checkout_url']);
-		}
 		if (!empty($settings['pid'])) {
 			$settings['pid'] = trim($settings['pid']);
 		}
@@ -211,37 +200,34 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 
 		$params = array(
 			'pid'          => trim((string) $this->pid),
-			'type'         => 'alipay',
+			'order_id'     => $out_trade_no,
+			'amount'       => (float) wc_format_decimal($order->get_total(), wc_get_price_decimals()),
 			'notify_url'   => $notify_url,
-			'return_url'   => $return_url,
-			'out_trade_no' => $out_trade_no,
+			'redirect_url' => $return_url,
 			'name'         => WordPress_EPUSDT_Helper::get_order_name($order),
-			'money'        => wc_format_decimal($order->get_total(), wc_get_price_decimals()),
+			'currency'     => $this->currency !== '' ? strtolower(trim((string) $this->currency)) : 'cny',
 		);
 
-		if ($this->token !== '') {
+		if ($this->token !== '' && $this->network !== '') {
 			$params['token'] = strtolower(trim((string) $this->token));
-		}
-		if ($this->network !== '') {
 			$params['network'] = strtolower(trim((string) $this->network));
 		}
-		if ($this->currency !== '') {
-			$params['currency'] = strtolower(trim((string) $this->currency));
-		}
 
-		$params['sign'] = WordPress_EPUSDT_Helper::make_sign($params, $this->secret_key);
-		$params['sign_type'] = 'MD5';
+		$params['signature'] = WordPress_EPUSDT_Helper::make_gmpay_signature($params, $this->secret_key);
 
-		$url = $gateway['submit_url'] . '?' . http_build_query($params, '', '&');
-		WordPress_EPUSDT_Helper::log('request create transaction', array('order_id' => $order->get_id(), 'url' => $gateway['submit_url'], 'out_trade_no' => $out_trade_no));
+		WordPress_EPUSDT_Helper::log('request create gmpay transaction', array('order_id' => $order->get_id(), 'url' => $gateway['submit_url'], 'out_trade_no' => $out_trade_no));
 
-		$response = wp_remote_get(
-			$url,
+		$response = wp_remote_post(
+			$gateway['submit_url'],
 			array(
 				'timeout'     => 20,
-				'redirection' => 0,
 				'user-agent'  => 'wordpress-epusdt/' . WORDPRESS_EPUSDT_VERSION,
 				'sslverify'   => true,
+				'headers'     => array(
+					'Content-Type' => 'application/json',
+					'Accept'       => 'application/json',
+				),
+				'body'        => wp_json_encode($params),
 			)
 		);
 
@@ -250,10 +236,15 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 		}
 
 		$status_code = (int) wp_remote_retrieve_response_code($response);
-		$location = (string) wp_remote_retrieve_header($response, 'location');
 		$body = wp_remote_retrieve_body($response);
+		$decoded = json_decode($body, true);
+		$payment_url = '';
 
-		if ($status_code < 300 || $status_code >= 400 || empty($location)) {
+		if (is_array($decoded) && !empty($decoded['data']['payment_url']) && is_string($decoded['data']['payment_url'])) {
+			$payment_url = trim($decoded['data']['payment_url']);
+		}
+
+		if ($status_code < 200 || $status_code >= 300 || $payment_url === '') {
 			$message = WordPress_EPUSDT_Helper::extract_message_from_body($body);
 			if ($message === '') {
 				$message = 'EPusdt 下单失败。';
@@ -272,7 +263,7 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 			throw new Exception($message);
 		}
 
-		$payment_url = WordPress_EPUSDT_Helper::build_public_checkout_url($location, $this->public_checkout_url, $gateway['checkout_base']);
+		$payment_url = WordPress_EPUSDT_Helper::join_url($gateway['checkout_base'], $payment_url);
 		WordPress_EPUSDT_Helper::remember_attempt($order, $out_trade_no, $payment_url);
 		$order->update_meta_data(WordPress_EPUSDT_Helper::META_PID, trim((string) $this->pid));
 		$order->update_meta_data(WordPress_EPUSDT_Helper::META_TRADE_NO, '');

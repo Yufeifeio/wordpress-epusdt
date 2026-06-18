@@ -2,8 +2,8 @@
 /**
  * Plugin Name: EPusdt
  * Plugin URI: https://github.com/Yufeifeio/wordpress-epusdt
- * Description: 基于 EPay 兼容接口的 EPusdt WooCommerce 支付插件。
- * Version: 1.0.3
+ * Description: 基于 GMPay 官方接口的 EPusdt WooCommerce 支付插件。
+ * Version: 1.0.4
  * Author: Yufeifeio
  * Author URI: https://github.com/Yufeifeio
  * Requires at least: 6.0
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-define('WORDPRESS_EPUSDT_VERSION', '1.0.3');
+define('WORDPRESS_EPUSDT_VERSION', '1.0.4');
 define('WORDPRESS_EPUSDT_FILE', __FILE__);
 define('WORDPRESS_EPUSDT_PATH', plugin_dir_path(__FILE__));
 define('WORDPRESS_EPUSDT_URL', plugin_dir_url(__FILE__));
@@ -37,7 +37,6 @@ function wordpress_epusdt_plugins_loaded() {
 	add_filter('woocommerce_payment_gateways', 'wordpress_epusdt_add_gateway');
 	add_filter('plugin_action_links_' . plugin_basename(WORDPRESS_EPUSDT_FILE), 'wordpress_epusdt_action_links');
 	add_action('woocommerce_api_wordpress_epusdt_notify', 'wordpress_epusdt_handle_notify');
-	add_action('woocommerce_before_thankyou', 'wordpress_epusdt_handle_return_fallback', 5);
 	add_action('before_woocommerce_init', 'wordpress_epusdt_declare_hpos_compatibility');
 	if (did_action('woocommerce_blocks_loaded')) {
 		wordpress_epusdt_register_blocks_support();
@@ -104,7 +103,16 @@ function wordpress_epusdt_handle_notify() {
 	}
 
 	$settings = WordPress_EPUSDT_Helper::get_settings();
-	$data = !empty($_POST) ? wp_unslash($_POST) : wp_unslash($_GET);
+	$data = !empty($_POST) ? wp_unslash($_POST) : array();
+	if (empty($data)) {
+		$raw_body = file_get_contents('php://input');
+		if (is_string($raw_body) && trim($raw_body) !== '') {
+			$json = json_decode($raw_body, true);
+			if (is_array($json)) {
+				$data = $json;
+			}
+		}
+	}
 
 	if (empty($data) || !is_array($data)) {
 		WordPress_EPUSDT_Helper::log('notify missing payload', array(), 'error');
@@ -114,14 +122,14 @@ function wordpress_epusdt_handle_notify() {
 	}
 
 	$secret_key = (string) ($settings['secret_key'] ?? '');
-	if (!WordPress_EPUSDT_Helper::verify_sign($data, $secret_key)) {
+	if (!WordPress_EPUSDT_Helper::verify_gmpay_signature($data, $secret_key)) {
 		WordPress_EPUSDT_Helper::log('notify invalid sign', $data, 'error');
 		status_header(400);
 		echo 'fail';
 		exit;
 	}
 
-	$out_trade_no = isset($data['out_trade_no']) ? sanitize_text_field((string) $data['out_trade_no']) : '';
+	$out_trade_no = isset($data['order_id']) ? sanitize_text_field((string) $data['order_id']) : '';
 	$order_id = WordPress_EPUSDT_Helper::parse_order_id_from_out_trade_no($out_trade_no);
 	$order = $order_id ? wc_get_order($order_id) : false;
 
@@ -146,9 +154,11 @@ function wordpress_epusdt_handle_notify() {
 		exit;
 	}
 
-	$money = isset($data['money']) ? (string) $data['money'] : '';
-	$trade_status = isset($data['trade_status']) ? sanitize_text_field((string) $data['trade_status']) : '';
-	$trade_no = isset($data['trade_no']) ? sanitize_text_field((string) $data['trade_no']) : '';
+	$money = isset($data['amount']) ? (string) $data['amount'] : '';
+	$trade_status = isset($data['status']) ? (string) $data['status'] : '';
+	$trade_no = !empty($data['block_transaction_id'])
+		? sanitize_text_field((string) $data['block_transaction_id'])
+		: (isset($data['trade_id']) ? sanitize_text_field((string) $data['trade_id']) : '');
 	$pid = isset($data['pid']) ? sanitize_text_field((string) $data['pid']) : '';
 
 	if ($pid !== '' && trim((string) ($settings['pid'] ?? '')) !== '' && trim((string) $settings['pid']) !== $pid) {
@@ -158,7 +168,8 @@ function wordpress_epusdt_handle_notify() {
 		exit;
 	}
 
-	if ($trade_status !== 'TRADE_SUCCESS' || !WordPress_EPUSDT_Helper::amount_matches($money, $order->get_total())) {
+	$status_ok = ('2' === (string) $trade_status || 2 === (int) $trade_status);
+	if (!$status_ok || !WordPress_EPUSDT_Helper::amount_matches($money, $order->get_total())) {
 		WordPress_EPUSDT_Helper::log(
 			'notify status or amount mismatch',
 			array(
@@ -185,44 +196,4 @@ function wordpress_epusdt_handle_notify() {
 	status_header(200);
 	echo 'success';
 	exit;
-}
-
-function wordpress_epusdt_handle_return_fallback($order_id) {
-	if (!$order_id || empty($_GET['trade_status']) || empty($_GET['sign'])) {
-		return;
-	}
-
-	$order = wc_get_order($order_id);
-	if (!$order || $order->get_payment_method() !== 'wordpress_epusdt' || $order->is_paid()) {
-		return;
-	}
-
-	$settings = WordPress_EPUSDT_Helper::get_settings();
-	$data = wp_unslash($_GET);
-
-	if (!WordPress_EPUSDT_Helper::verify_sign($data, (string) ($settings['secret_key'] ?? ''))) {
-		WordPress_EPUSDT_Helper::log('return fallback invalid sign', array('order_id' => $order_id), 'error');
-		return;
-	}
-
-	$out_trade_no = isset($data['out_trade_no']) ? sanitize_text_field((string) $data['out_trade_no']) : '';
-	$trade_status = isset($data['trade_status']) ? sanitize_text_field((string) $data['trade_status']) : '';
-	$money = isset($data['money']) ? (string) $data['money'] : '';
-	$trade_no = isset($data['trade_no']) ? sanitize_text_field((string) $data['trade_no']) : '';
-
-	if (!WordPress_EPUSDT_Helper::has_attempt($order, $out_trade_no)) {
-		WordPress_EPUSDT_Helper::log('return fallback out_trade_no mismatch', array('order_id' => $order_id, 'out_trade_no' => $out_trade_no), 'error');
-		return;
-	}
-
-	if ($trade_status !== 'TRADE_SUCCESS' || !WordPress_EPUSDT_Helper::amount_matches($money, $order->get_total())) {
-		WordPress_EPUSDT_Helper::log('return fallback amount mismatch', array('order_id' => $order_id, 'money' => $money), 'error');
-		return;
-	}
-
-	$order->payment_complete($trade_no);
-	$order->update_meta_data(WordPress_EPUSDT_Helper::META_TRADE_NO, $trade_no);
-	$order->add_order_note(sprintf('EPusdt 同步返回已验证，trade_no: %s', $trade_no));
-	$order->save();
-	WordPress_EPUSDT_Helper::log('return fallback payment complete', array('order_id' => $order_id, 'trade_no' => $trade_no));
 }
