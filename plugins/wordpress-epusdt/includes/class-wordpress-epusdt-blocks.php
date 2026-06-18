@@ -31,8 +31,9 @@ final class WordPress_EPUSDT_Blocks_Support extends AbstractPaymentMethodType {
 
 	public function get_payment_method_data() {
 		return array(
-			'title'       => $this->settings['title'] ?? 'USDT',
+			'title'       => $this->settings['title'] ?? 'EPusdt',
 			'description' => $this->settings['description'] ?? '使用 EPusdt 完成 USDT 支付。',
+			'icon'        => WORDPRESS_EPUSDT_URL . 'assets/images/usdt.ico',
 			'supports'    => array('products'),
 		);
 	}

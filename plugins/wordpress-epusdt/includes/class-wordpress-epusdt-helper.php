@@ -22,8 +22,8 @@ class WordPress_EPUSDT_Helper {
 			$settings,
 			array(
 				'enabled'             => 'no',
-				'title'               => 'USDT',
-				'description'         => 'Pay with USDT via Epusdt.',
+				'title'               => 'EPusdt',
+				'description'         => '使用 EPusdt 完成 USDT 支付。',
 				'api_url'             => '',
 				'pid'                 => '',
 				'secret_key'          => '',

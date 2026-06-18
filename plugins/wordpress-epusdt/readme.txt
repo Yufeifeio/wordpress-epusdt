@@ -4,7 +4,7 @@ Tags: woocommerce, payment gateway, usdt, epusdt, crypto
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,12 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 把 `公网收银台地址` 填成实际对外访问 EPusdt 收银台的域名即可。
 
 == Changelog ==
+
+= 1.0.1 =
+
+- 优化前台支付展示
+- 增加插件快捷设置入口
+- 同步完善图标和商用发布细节
 
 = 1.0.0 =
 

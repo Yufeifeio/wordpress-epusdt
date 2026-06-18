@@ -8,7 +8,7 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 
 	public function __construct() {
 		$this->id                 = 'wordpress_epusdt';
-		$this->icon               = '';
+		$this->icon               = WORDPRESS_EPUSDT_URL . 'assets/images/usdt.ico';
 		$this->has_fields         = false;
 		$this->method_title       = 'EPusdt';
 		$this->method_description = '通过 EPay 兼容接口接入 EPusdt USDT 支付。';
@@ -17,7 +17,7 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 		$this->init_form_fields();
 		$this->init_settings();
 
-		$this->title               = $this->get_option('title', 'USDT');
+		$this->title               = $this->get_option('title', 'EPusdt');
 		$this->description         = $this->get_option('description', '使用 EPusdt 完成 USDT 支付。');
 		$this->enabled             = $this->get_option('enabled', 'no');
 		$this->api_url             = $this->get_option('api_url', '');
@@ -46,7 +46,7 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 				'title'       => __('名称', 'wordpress-epusdt'),
 				'type'        => 'text',
 				'description' => __('前台结账页向用户显示的支付名称。', 'wordpress-epusdt'),
-				'default'     => 'USDT',
+				'default'     => 'EPusdt',
 				'desc_tip'    => true,
 			),
 			'description' => array(
@@ -276,6 +276,7 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 		$payment_url = WordPress_EPUSDT_Helper::build_public_checkout_url($location, $this->public_checkout_url, $gateway['checkout_base']);
 		WordPress_EPUSDT_Helper::remember_attempt($order, $out_trade_no, $payment_url);
 		$order->update_meta_data(WordPress_EPUSDT_Helper::META_PID, trim((string) $this->pid));
+		$order->update_meta_data(WordPress_EPUSDT_Helper::META_TRADE_NO, '');
 		$order->save();
 
 		return array(

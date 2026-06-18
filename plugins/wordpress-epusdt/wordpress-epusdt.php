@@ -3,13 +3,15 @@
  * Plugin Name: EPusdt
  * Plugin URI: https://github.com/Yufeifeio/wordpress-epusdt
  * Description: 基于 EPay 兼容接口的 EPusdt WooCommerce 支付插件。
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Yufeifeio
  * Author URI: https://github.com/Yufeifeio
  * Requires at least: 6.0
+ * Tested up to: 7.0
  * Requires PHP: 7.4
+ * Requires Plugins: woocommerce
  * WC requires at least: 6.0
- * WC tested up to: 9.1
+ * WC tested up to: 10.8
  * Text Domain: wordpress-epusdt
  */
 
@@ -17,7 +19,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-define('WORDPRESS_EPUSDT_VERSION', '1.0.0');
+define('WORDPRESS_EPUSDT_VERSION', '1.0.1');
 define('WORDPRESS_EPUSDT_FILE', __FILE__);
 define('WORDPRESS_EPUSDT_PATH', plugin_dir_path(__FILE__));
 define('WORDPRESS_EPUSDT_URL', plugin_dir_url(__FILE__));
@@ -33,6 +35,7 @@ function wordpress_epusdt_plugins_loaded() {
 	require_once WORDPRESS_EPUSDT_PATH . 'includes/class-wordpress-epusdt-gateway.php';
 
 	add_filter('woocommerce_payment_gateways', 'wordpress_epusdt_add_gateway');
+	add_filter('plugin_action_links_' . plugin_basename(WORDPRESS_EPUSDT_FILE), 'wordpress_epusdt_action_links');
 	add_action('woocommerce_api_wordpress_epusdt_notify', 'wordpress_epusdt_handle_notify');
 	add_action('woocommerce_before_thankyou', 'wordpress_epusdt_handle_return_fallback', 5);
 	add_action('before_woocommerce_init', 'wordpress_epusdt_declare_hpos_compatibility');
@@ -43,6 +46,20 @@ add_action('plugins_loaded', 'wordpress_epusdt_plugins_loaded', 20);
 function wordpress_epusdt_add_gateway($gateways) {
 	$gateways[] = 'WordPress_EPUSDT_Gateway';
 	return $gateways;
+}
+
+function wordpress_epusdt_action_links($links) {
+	$settings_url = admin_url('admin.php?page=wc-settings&tab=checkout&section=wordpress_epusdt');
+	array_unshift(
+		$links,
+		sprintf(
+			'<a href="%s">%s</a>',
+			esc_url($settings_url),
+			esc_html__('设置', 'wordpress-epusdt')
+		)
+	);
+
+	return $links;
 }
 
 function wordpress_epusdt_missing_wc_notice() {
@@ -156,7 +173,7 @@ function wordpress_epusdt_handle_notify() {
 	if (!$order->is_paid()) {
 		$order->payment_complete($trade_no);
 		$order->update_meta_data(WordPress_EPUSDT_Helper::META_TRADE_NO, $trade_no);
-		$order->add_order_note(sprintf('Epusdt payment confirmed. trade_no: %s', $trade_no));
+		$order->add_order_note(sprintf('EPusdt 支付已确认，trade_no: %s', $trade_no));
 		$order->save();
 		WordPress_EPUSDT_Helper::log('notify payment complete', array('order_id' => $order_id, 'trade_no' => $trade_no));
 	}
@@ -201,7 +218,7 @@ function wordpress_epusdt_handle_return_fallback($order_id) {
 
 	$order->payment_complete($trade_no);
 	$order->update_meta_data(WordPress_EPUSDT_Helper::META_TRADE_NO, $trade_no);
-	$order->add_order_note(sprintf('Epusdt return verified. trade_no: %s', $trade_no));
+	$order->add_order_note(sprintf('EPusdt 同步返回已验证，trade_no: %s', $trade_no));
 	$order->save();
 	WordPress_EPUSDT_Helper::log('return fallback payment complete', array('order_id' => $order_id, 'trade_no' => $trade_no));
 }
