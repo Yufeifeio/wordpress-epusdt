@@ -250,8 +250,7 @@ class WordPress_EPUSDT_Gateway extends WC_Payment_Gateway {
 		}
 
 		$status_code = (int) wp_remote_retrieve_response_code($response);
-		$headers = wp_remote_retrieve_headers($response);
-		$location = is_object($headers) ? $headers->get('location') : '';
+		$location = (string) wp_remote_retrieve_header($response, 'location');
 		$body = wp_remote_retrieve_body($response);
 
 		if ($status_code < 300 || $status_code >= 400 || empty($location)) {
