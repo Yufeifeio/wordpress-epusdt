@@ -6,9 +6,6 @@
   <img src="https://img.shields.io/badge/WordPress-WooCommerce%20%E6%8F%92%E4%BB%B6-203A43?style=for-the-badge" alt="WordPress WooCommerce 插件" />
   <img src="https://img.shields.io/badge/EPusdt-Callback%20Ready-26A17B?style=for-the-badge&logo=tether&logoColor=white" alt="EPusdt Callback Ready" />
   <img src="https://img.shields.io/badge/EPay-%E5%85%BC%E5%AE%B9%E6%8E%A5%E5%8F%A3-0F2027?style=for-the-badge" alt="EPay 兼容接口" />
-  <a href="https://github.com/Yufeifeio/Epay-epusdt">
-    <img src="https://img.shields.io/badge/%E5%8F%82%E8%80%83-Epay--epusdt-1B263B?style=for-the-badge" alt="参考 Epay-epusdt" />
-  </a>
 </div>
 
 # wordpress-epusdt
